@@ -3,7 +3,6 @@ package com.example.md4;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -15,17 +14,11 @@ import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ServiceInfo;
 import android.content.pm.Signature;
-import android.net.DhcpInfo;
-import android.net.wifi.ScanResult;
-import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
-import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -37,7 +30,6 @@ import android.widget.Toast;
 
 import org.jsoup.*;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import com.google.android.gms.tasks.OnFailureListener;
@@ -68,8 +60,6 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
     private static final String KEY_DEVICE = "device";
 
 
-
-
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -80,7 +70,7 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-    new FetchCategoryTask().execute();
+        new FetchCategoryTask().execute();
 
 
         logout = findViewById(R.id.logout);
@@ -91,21 +81,8 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
         text = findViewById(R.id.totalapp);
         logout = findViewById(R.id.logout);
 
-        //     writeAllappsToDb();
 
-        FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
-
-        Map<String, Object> id = new HashMap<>();
-        id.put("device id", getIMEIDeviceId(MainActivity.this));
-
-        db.collection("User").document(mUser.getEmail()).
-                collection("Device").document(android.os.Build.MODEL).set(id)
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Log.w(TAG, "klaida pridedant ID");
-                    }
-                });
+        putUserToDB();
 
 
         logout.setOnClickListener(new View.OnClickListener() {
@@ -122,14 +99,7 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
         final List<ApplicationInfo> installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
         final int installedApps1 = getApplicationInfo().category;
         for (ApplicationInfo app : installedApps) {
-            //Details:
-//            System.out.println(app);
-//            Log.d(TAG, "categorie: " + getApplicationInfo().category);
-//            Log.d(TAG, "Package: " + app.packageName);
-//            Log.d(TAG, "UID: " + app.uid);
-//            Log.d(TAG, "Directory: " + app.sourceDir);
 
-            //Permissions:
             StringBuffer permissions = new StringBuffer();
 
             try {
@@ -141,7 +111,6 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
                         permissions.append(requestedPermissions[i] + "\n");
                     }
 
-             //       Log.d(TAG, "Permissions: " + permissions);
                 }
             } catch (PackageManager.NameNotFoundException e) {
                 e.printStackTrace();
@@ -151,6 +120,22 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
 
     }
 
+    private void putUserToDB() {
+        FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
+
+        Map<String, Object> id = new HashMap<>();
+        id.put("device id", getIMEIDeviceId(MainActivity.this));
+
+        db.collection("User").document(mUser.getEmail()).
+                collection("Device").document(Build.MODEL).set(id)
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w(TAG, "klaida pridedant ID");
+                    }
+                });
+    }
+
     private class FetchCategoryTask extends AsyncTask<String, Void, Void> {
 
         private final String TAG = FetchCategoryTask.class.getSimpleName();
@@ -158,35 +143,49 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
 
 
         @Override
-        protected Void doInBackground(String ... errors) {
+        protected Void doInBackground(String... errors) {
             String category;
             String GoogleConst = "https://play.google.com/store/apps/details?id=";
             pm = getPackageManager();
+            int i = 0;
+            Map<String, Object> app = new HashMap<>();
+            Map<String, Object> appAll = new HashMap<>();
 
 
-                  List<ApplicationInfo> infos = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
-                  // create a list with sze of total number of apps
-                  String[] apps = new String[infos.size()];
-                    int i = 0;
+
+            List<ApplicationInfo> infos = getPackageManager().getInstalledApplications(PackageManager.GET_META_DATA);
+            // create a list with sze of total number of apps
+            String[] apps = new String[infos.size()];
+
 //             add all the app name in string list
-                  for (ApplicationInfo info : infos) {
-                      apps[i] = info.packageName;
-                      if ((infos.get(i).flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
+            for (ApplicationInfo info : infos) {
+                apps[i] = info.packageName;
+                if ((infos.get(i).flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
 
 
-                          String query_url = GoogleConst + info.packageName; //"com.spotify.music"; //info.packageName;  //GOOGLE_URL + packageInfo.packageName;
-                          Log.i(TAG, query_url);
-                          category = getCategory(query_url);
-                          Map<String, Object> app = new HashMap<>();
-                          app.put("Programėlė:", info.packageName);
-                          app.put("Kategorija:", category);
+                    String query_url = GoogleConst + info.packageName; //"com.spotify.music"; //info.packageName;  //GOOGLE_URL + packageInfo.packageName;
+                    Log.i(TAG, query_url);
+                    category = getCategory(query_url);
 
-                          Log.d("CATEGORY", app.toString());
-                      }
-                    i++;
-                  }
+                    app.put("ID: ", i);
+                    app.put("Programėlė: ", info.packageName);
+                    app.put("Kategorija: ", category);
 
-                  // store category or do something else
+                    appAll.put("ID: "+ i + " Programėlė: ", info.packageName);
+                    appAll.put("ID: "+ i + " Kategorija: ", category);
+
+
+
+
+                    Log.d("CATEGORY", app.toString());
+
+
+                }
+                i++;
+            }
+            Log.d("CATEGORY", appAll.toString());
+
+//            System.out.println(app.toString());
 
             return null;
         }
@@ -201,24 +200,23 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
             // create a list with sze of total number of apps
             String[] apps = new String[infos.size()];
 //            for (ApplicationInfo info : infos) {
-                int i = 0;
+            int i = 0;
 
 //                apps[i] = info.packageName;
 
-                try {
-                    Document doc = Jsoup.connect(query_url).get();
-                    //Elements link = doc.select("a[class=\"hrTbp R8zArc\"]");
-                    Elements link = doc.select("a[class=\"hrTbp R8zArc\"]");
-                    return link.get(1).text();
-                } catch (Exception e) {
-                    Log.e("DOc", e.toString());
-                }
-                return "Default app";
+            try {
+                Document doc = Jsoup.connect(query_url).get();
+                //Elements link = doc.select("a[class=\"hrTbp R8zArc\"]");
+                Elements link = doc.select("a[class=\"hrTbp R8zArc\"]");
+                return link.get(1).text();
+            } catch (Exception e) {
+                Log.e("DOc", e.toString());
             }
+            return "Default app";
+        }
 //            return query_url;
 //        }
     }
-
 
 
     private void appinfo() {
@@ -233,33 +231,30 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
             ProviderInfo[] providers = pInfo.providers;
 
 
-
-
-
             int versionCode = pInfo.versionCode;
 
             Map<String, Object> appName = new HashMap<>();
 
-         //   Log.d("versionCode-package ", Integer.toString(versionCode));
-           // Log.d("versionCode-package ", String.valueOf(pInfo.applicationInfo));
-           // Log.d("Installed Applications", pInfo.applicationInfo
-           //         .loadLabel(p).toString());
-           // Log.d("Installed Applications", String.valueOf(pInfo.splitNames));
+            //   Log.d("versionCode-package ", Integer.toString(versionCode));
+            // Log.d("versionCode-package ", String.valueOf(pInfo.applicationInfo));
+            // Log.d("Installed Applications", pInfo.applicationInfo
+            //         .loadLabel(p).toString());
+            // Log.d("Installed Applications", String.valueOf(pInfo.splitNames));
 
             List<PackageInfo> packList = getPackageManager().getInstalledPackages(0);
-            for (int i=0; i < packList.size(); i++) {
+            for (int i = 0; i < packList.size(); i++) {
                 PackageInfo packInfo = packList.get(i);
                 if ((packInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0
-                        & (packInfo.applicationInfo.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0 ) {
+                        & (packInfo.applicationInfo.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0) {
                     String appName1 = packInfo.applicationInfo.dataDir;
                     Log.e("App № " + Integer.toString(i), appName1);
                 }
 
                 ApplicationInfo appinf = getApplicationInfo();
-           //     Log.d("Installed dir", pInfo.packageName);
+                //     Log.d("Installed dir", pInfo.packageName);
 
                 Map<String, Object> appDir = new HashMap<>();
-            //    appDir.put("Programėlės direktorija:", pInfo.applicationInfo.dataDir);
+                //    appDir.put("Programėlės direktorija:", pInfo.applicationInfo.dataDir);
 
                 db.collection("User").document(mUser.getEmail()).
                         collection("Device").document(android.os.Build.MODEL).collection("applications")
@@ -354,14 +349,10 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
                     Log.d("permission list", reqPermission[i]);
 
 
-
         }
 
 
     }
-
-
-
 
 
     public static String getIMEIDeviceId(Context context) {
@@ -425,18 +416,6 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
             e.printStackTrace();
         }
 
-
-//        // get list of all the apps installed just name
-//        List<PackageInfo> packList = getPackageManager().getInstalledPackages(0);
-//        String[] apps = new String[packList.size()];
-//        for (int i = 0; i < packList.size(); i++) {
-//            PackageInfo packInfo = packList.get(i);
-//            apps[i] = packInfo.applicationInfo.loadLabel(getPackageManager()).toString();
-//        }
-//        // set all the apps name in list view
-//        listView.setAdapter(new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, apps));
-//        // write total count of apps available.
-//        text.setText(packList.size() + " Apps are installed");
 
     }
 
