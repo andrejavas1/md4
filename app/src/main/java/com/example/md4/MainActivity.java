@@ -32,9 +32,13 @@ import org.jsoup.*;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.security.MessageDigest;
@@ -117,8 +121,38 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
             }
         }
 
+        nustatLygi();
 
     }
+
+    private void nustatLygi() {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        final String[] lygis = new String[1];
+        FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
+
+        DocumentReference docRef = db.collection("User").document(mUser.getEmail());
+        docRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot document = task.getResult();
+                    if (document != null && document.exists()) {
+                        Log.d("Saugumo lygis", document.getString("saugumoLygis")); //Print the name
+                        lygis[0] = document.getString("saugumoLygis");
+                        System.out.println("-------");
+                        System.out.println(lygis[0]);
+                    } else {
+                        Log.d(TAG, "Saugumo lygis nepriskirtas");
+                    }
+                } else {
+                    Log.d(TAG, "nepavyko ", task.getException());
+                }
+
+            }
+
+        });
+    }
+
 
     private void putUserToDB() {
         FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -140,7 +174,7 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
 
         private final String TAG = FetchCategoryTask.class.getSimpleName();
         private PackageManager pm;
-
+        Map<String, ArrayList<String>> multiValueMap = new HashMap<String, ArrayList<String>>();
 
         @Override
         protected Void doInBackground(String... errors) {
@@ -170,20 +204,28 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
                     app.put("ID: ", i);
                     app.put("Programėlė: ", info.packageName);
                     app.put("Kategorija: ", category);
-
-                    appAll.put("ID: "+ i + " Programėlė: ", info.packageName);
-                    appAll.put("ID: "+ i + " Kategorija: ", category);
-
-
+//
+//                    appAll.put("ID: "+ i + " Programėlė: ", info.packageName);
+//                    appAll.put("ID: "+ i + " Kategorija: ", category);
 
 
-                    Log.d("CATEGORY", app.toString());
+                    if (multiValueMap.containsKey(category)) {
+                        multiValueMap.get(category).add(info.packageName);
+                    } else {
+                        multiValueMap.put(category, new ArrayList<String>());
+                        multiValueMap.get(category).add(info.packageName);
+                    }
 
 
                 }
                 i++;
             }
-            Log.d("CATEGORY", appAll.toString());
+            Log.d("CATEGORY", app.toString());
+            Log.d("CATEGORYmulti", multiValueMap.toString());
+            Log.d("CATEGORYmulti1", String.valueOf(multiValueMap.size()));
+            System.out.println(multiValueMap.get("Social").toString());
+
+
 
 //            System.out.println(app.toString());
 
@@ -212,11 +254,21 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e("DOc", e.toString());
             }
+
             return "Default app";
         }
-//            return query_url;
+
+//        @Override
+//        protected void onPostExecute(Void unused) {
+//            super.onPostExecute(unused);
+//            MainActivity.this.checkLevel();
 //        }
     }
+
+//    private void checkLevel() {
+//        System.out.println(new FetchCategoryTask().multiValueMap.get("Social").toString());
+//        System.out.println("]]]]]]");
+//    }
 
 
     private void appinfo() {
@@ -267,6 +319,8 @@ public class MainActivity<ActivityUtil> extends AppCompatActivity {
                         });
 
             }
+
+
             //adding packagenames to db
             appName.put("Programele:", pInfo.applicationInfo
                     .loadLabel(p).toString());
